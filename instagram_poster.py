@@ -90,7 +90,6 @@ class InstagramPoster:
     @retry(max_attempts=3, delay=1)
     def create_new_post(self):
         try:
-            # Verificar URL atual antes de tentar criar novo post
             if "instagram.com/create" in self.page.url:
                 self.page.goto("https://www.instagram.com/")
                 time.sleep(1)
@@ -138,19 +137,19 @@ class InstagramPoster:
             self.page.wait_for_selector('text=Selecionar do computador', timeout=5000)
             self.page.click('text=Selecionar do computador')
             
-            time.sleep(1)  # Reduzido de 2 para 1
+            time.sleep(1)
             
             import pyautogui
             pyautogui.write(image_path)
-            time.sleep(0.5)  # Reduzido de 1 para 0.5
+            time.sleep(0.5)
             pyautogui.press('enter')
             logging.info("Arquivo selecionado via pyautogui")
             
             try:
-                self.page.wait_for_selector('[aria-label="Selecionar corte"]', timeout=10000)  # Reduzido de 15000
+                self.page.wait_for_selector('[aria-label="Selecionar corte"]', timeout=10000)
                 logging.info("Imagem carregada com sucesso")
                 
-                time.sleep(2)  # Reduzido de 3
+                time.sleep(2)
                 
                 if not self.configure_image_format():
                     raise Exception("Falha ao configurar formato 4:5")
@@ -253,20 +252,17 @@ class InstagramPoster:
             
             print("Adicionando descrição...")
             try:
-                # Localiza e clica no campo de legenda
                 caption_field = self.page.locator('[aria-label="Escreva uma legenda..."]').first
                 caption_field.click()
                 time.sleep(0.2)
                 
-                # Limpa o campo
                 self.page.keyboard.press('Control+A')
                 self.page.keyboard.press('Delete')
                 time.sleep(0.2)
                 
-                # Digita o texto em chunks maiores para maior velocidade
                 for chunk in [base_text[i:i+200] for i in range(0, len(base_text), 200)]:
-                    caption_field.type(chunk, delay=5)  # Delay muito baixo para maior velocidade
-                    time.sleep(0.05)  # Pequena pausa entre chunks
+                    caption_field.type(chunk, delay=5)
+                    time.sleep(0.05)
                 
                 print("✓ Descrição adicionada com sucesso")
             except Exception as desc_error:
@@ -284,18 +280,18 @@ class InstagramPoster:
                             click_x = box['x'] + (box['width'] * 0.3)
                             click_y = box['y'] + (box['height'] * 0.3)
                             self.page.mouse.click(click_x, click_y)
-                            time.sleep(1)  # Reduzido de 2
+                            time.sleep(1)
                     
                     search_input = self.page.locator('input[placeholder="Pesquisar"]').first
-                    if search_input.is_visible():  # Otimizado
+                    if search_input.is_visible():
                         search_input.click()
                         search_input.fill("")
                         username_clean = username.replace('@', '')
                         search_input.fill(username_clean)
                         print(f"Pesquisando por: {username_clean}")
-                        time.sleep(1)  # Reduzido de 2
+                        time.sleep(1)
                         
-                        time.sleep(1)  # Reduzido de 2
+                        time.sleep(1)
                         
                         selectors = [
                             'button._acmy._acm-',
@@ -307,12 +303,12 @@ class InstagramPoster:
                         for selector in selectors:
                             try:
                                 result = self.page.locator(selector).first
-                                if result.is_visible():  # Otimizado
+                                if result.is_visible():
                                     print(f"Encontrou resultado usando selector: {selector}")
                                     result.click(timeout=5000)
-                                    time.sleep(0.5)  # Reduzido de 1
+                                    time.sleep(0.5)
                                     
-                                    if self.page.locator('button:has-text("Concluir")').is_visible():  # Otimizado
+                                    if self.page.locator('button:has-text("Concluir")').is_visible():
                                         self.page.locator('button:has-text("Concluir")').click()
                                         print("✓ Usuário marcado com sucesso")
                                         return True
@@ -333,29 +329,23 @@ class InstagramPoster:
     @retry(max_attempts=3, delay=1)
     def share_post(self):
         try:
-            # Clica no botão Compartilhar
             self.page.click('text=Compartilhar')
             print("✓ Botão compartilhar clicado")
             
-            # Aguarda a confirmação de compartilhamento
-            self.page.wait_for_selector('text=Seu post foi compartilhado', timeout=10000)  # Reduzido de 15000
+            self.page.wait_for_selector('text=Seu post foi compartilhado', timeout=10000)
             print("✓ Post compartilhado com sucesso")
             
-            # Tenta fechar a tela de confirmação
             try:
-                # Tenta clicar no botão Fechar
                 close_button = self.page.locator('button[aria-label="Fechar"]').first
                 if close_button.is_visible():
                     close_button.click()
                 else:
-                    # Fallback para Escape
                     self.page.keyboard.press('Escape')
                 print("✓ Tela de confirmação fechada")
             except:
-                # Fallback para Escape se tudo falhar
                 self.page.keyboard.press('Escape')
             
-            time.sleep(1)  # Reduzido de 2
+            time.sleep(1)
             return True
             
         except Exception as e:
@@ -451,18 +441,14 @@ def read_base_texts(file_path):
         with open(file_path, 'r', encoding='utf-8') as file:
             content = file.read()
             
-        # Divide os textos mantendo o delimitador
         texts = content.split('#atendimentopersonalizado')
         texts = [text.strip() for text in texts if text.strip()]
         
         if texts:
-            # Pega o primeiro texto e adiciona o delimitador
             current_text = texts[0] + '#atendimentopersonalizado'
             
-            # Remove apenas o primeiro texto, mantendo os demais
             remaining_texts = '#atendimentopersonalizado'.join(texts[1:])
             
-            # Salva os textos restantes
             with open(file_path, 'w', encoding='utf-8') as file:
                 file.write(remaining_texts)
             
@@ -485,7 +471,7 @@ def extract_username(text):
 def main():
     images_folder = r"G:\Redguias\postsdodia"
     base_texts_file = os.path.join(images_folder, "textobase.txt")
-    gpt_texts_file = os.path.join(images_folder, "zgpttextos.txt")  # Novo arquivo para limpar
+    gpt_texts_file = os.path.join(images_folder, "zgpttextos.txt")
     
     for path in [images_folder, base_texts_file]:
         if not os.path.exists(path):
@@ -517,7 +503,6 @@ def main():
             print(f"Processando imagem {i+1} de {len(images)}: {image}")
             print(f"{'='*50}\n")
             
-            # Lê o próximo texto disponível
             base_texts = read_base_texts(base_texts_file)
             if not base_texts:
                 print("Não há mais textos disponíveis para postagem")
@@ -542,7 +527,6 @@ def main():
                     print(f"Postagem {i+1} concluída com sucesso!")
                     successful_posts.append(image)
                     
-                    # Apaga a imagem logo após o post ser concluído
                     try:
                         os.remove(os.path.join(images_folder, image))
                         print(f"✓ Imagem {image} removida com sucesso")
@@ -556,10 +540,9 @@ def main():
         
         print(f"\nProcesso finalizado! {len(successful_posts)} imagens postadas e removidas.")
         
-        # Limpa o arquivo zgpttextos.txt após todas as postagens
         try:
             with open(gpt_texts_file, 'w', encoding='utf-8') as file:
-                file.write('')  # Escreve string vazia para limpar o arquivo
+                file.write('')
             print("✓ Arquivo zgpttextos.txt limpo com sucesso")
         except Exception as e:
             print(f"⚠️ Erro ao limpar arquivo zgpttextos.txt: {str(e)}")

@@ -1,5 +1,7 @@
 # Automação de Postagens no Instagram
 
+O objetivo deste projeto é automatizar um processo manual feito diariamente(by myself) para melhorar a eficiência e gestão de tempo. Este projeto foi desenvolvido de forma personalizada para atender minhas próprias expectativas e necessidades específicas, sem a intenção de ser reutilizado por terceiros.
+
 Este script automatiza o processo de postagem no Instagram, permitindo postar múltiplas imagens com suas respectivas descrições.
 
 ## Requisitos
