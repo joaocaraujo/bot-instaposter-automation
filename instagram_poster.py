@@ -134,22 +134,22 @@ class InstagramPoster:
             
             image_path = os.path.abspath(image_path)
             
-            self.page.wait_for_selector('text=Selecionar do computador', timeout=5000)
+            self.page.wait_for_selector('text=Selecionar do computador', timeout=3000)
             self.page.click('text=Selecionar do computador')
             
-            time.sleep(1)
+            time.sleep(0.5)
             
             import pyautogui
             pyautogui.write(image_path)
-            time.sleep(0.5)
+            time.sleep(0.2)
             pyautogui.press('enter')
             logging.info("Arquivo selecionado via pyautogui")
             
             try:
-                self.page.wait_for_selector('[aria-label="Selecionar corte"]', timeout=10000)
+                self.page.wait_for_selector('[aria-label="Selecionar corte"]', timeout=5000)
                 logging.info("Imagem carregada com sucesso")
                 
-                time.sleep(2)
+                time.sleep(1)
                 
                 if not self.configure_image_format():
                     raise Exception("Falha ao configurar formato 4:5")
@@ -167,7 +167,7 @@ class InstagramPoster:
 
     def configure_image_format(self):
         try:
-            time.sleep(2)
+            time.sleep(1)
             
             crop_selectors = [
                 '[aria-label="Selecionar corte"]',
@@ -191,7 +191,7 @@ class InstagramPoster:
                     logging.warning(f"Falha ao usar selector {selector}: {e}")
                     continue
             
-            time.sleep(2)
+            time.sleep(1)
             
             ratio_selectors = [
                 '[aria-label="Proporção 4:5"]',
@@ -215,7 +215,7 @@ class InstagramPoster:
                     logging.warning(f"Falha ao selecionar 4:5 com selector {selector}: {e}")
                     continue
             
-            time.sleep(1)
+            time.sleep(0.5)
             
             for i in range(2):
                 try:
@@ -223,7 +223,7 @@ class InstagramPoster:
                     if next_button and next_button.is_visible():
                         next_button.click()
                         logging.info(f"Clique em Avançar {i+1}/2")
-                        time.sleep(1)
+                        time.sleep(0.5)
                 except Exception as e:
                     logging.error(f"Erro ao clicar em Avançar: {e}")
                     return False
@@ -254,15 +254,15 @@ class InstagramPoster:
             try:
                 caption_field = self.page.locator('[aria-label="Escreva uma legenda..."]').first
                 caption_field.click()
-                time.sleep(0.2)
+                time.sleep(0.1)
                 
                 self.page.keyboard.press('Control+A')
                 self.page.keyboard.press('Delete')
-                time.sleep(0.2)
+                time.sleep(0.1)
                 
-                for chunk in [base_text[i:i+200] for i in range(0, len(base_text), 200)]:
-                    caption_field.type(chunk, delay=5)
-                    time.sleep(0.05)
+                for chunk in [base_text[i:i+300] for i in range(0, len(base_text), 300)]:
+                    caption_field.type(chunk, delay=2)
+                    time.sleep(0.02)
                 
                 print("✓ Descrição adicionada com sucesso")
             except Exception as desc_error:
@@ -280,7 +280,7 @@ class InstagramPoster:
                             click_x = box['x'] + (box['width'] * 0.3)
                             click_y = box['y'] + (box['height'] * 0.3)
                             self.page.mouse.click(click_x, click_y)
-                            time.sleep(1)
+                            time.sleep(0.5)
                     
                     search_input = self.page.locator('input[placeholder="Pesquisar"]').first
                     if search_input.is_visible():
@@ -332,20 +332,45 @@ class InstagramPoster:
             self.page.click('text=Compartilhar')
             print("✓ Botão compartilhar clicado")
             
-            self.page.wait_for_selector('text=Seu post foi compartilhado', timeout=10000)
-            print("✓ Post compartilhado com sucesso")
+            success_indicators = [
+                'text=Seu post foi compartilhado',
+                'div[role="dialog"]:has-text("Seu post foi compartilhado")',
+                'div[class*="x1n2onr6"]:has-text("Seu post foi compartilhado")'
+            ]
+            
+            success_detected = False
+            for indicator in success_indicators:
+                try:
+                    self.page.wait_for_selector(indicator, timeout=15000)
+                    success_detected = True
+                    print("✓ Post compartilhado com sucesso")
+                    break
+                except:
+                    continue
+            
+            if not success_detected:
+                raise Exception("Não foi possível confirmar o sucesso da postagem")
             
             try:
                 close_button = self.page.locator('button[aria-label="Fechar"]').first
                 if close_button.is_visible():
                     close_button.click()
+                    print("✓ Tela de confirmação fechada via botão")
                 else:
                     self.page.keyboard.press('Escape')
-                print("✓ Tela de confirmação fechada")
-            except:
-                self.page.keyboard.press('Escape')
+                    print("✓ Tela de confirmação fechada via ESC")
+            except Exception as close_error:
+                print(f"⚠️ Erro ao fechar tela de confirmação: {str(close_error)}")
             
-            time.sleep(1)
+            time.sleep(2)
+            
+            try:
+                if self.page.locator('text=Seu post foi compartilhado').is_visible():
+                    self.page.goto('https://www.instagram.com/')
+                    time.sleep(2)
+            except:
+                pass
+            
             return True
             
         except Exception as e:
@@ -473,6 +498,12 @@ def main():
     base_texts_file = os.path.join(images_folder, "textobase.txt")
     gpt_texts_file = os.path.join(images_folder, "zgpttextos.txt")
     
+    start_time = time.time()
+    total_posts = 0
+    successful_posts = []
+    failed_posts = 0
+    post_times = []
+    
     for path in [images_folder, base_texts_file]:
         if not os.path.exists(path):
             print(f"Erro: O caminho {path} não existe!")
@@ -496,9 +527,8 @@ def main():
         print(f"\nEncontradas {len(images)} imagens para postar")
         print("Ordem de postagem:", ", ".join(images))
         
-        successful_posts = []
-        
         for i, image in enumerate(images):
+            post_start_time = time.time()
             print(f"\n{'='*50}")
             print(f"Processando imagem {i+1} de {len(images)}: {image}")
             print(f"{'='*50}\n")
@@ -537,8 +567,12 @@ def main():
                     break
             else:
                 print(f"Não foi possível postar a imagem {image}")
-        
-        print(f"\nProcesso finalizado! {len(successful_posts)} imagens postadas e removidas.")
+                failed_posts += 1
+            
+            post_end_time = time.time()
+            post_duration = post_end_time - post_start_time
+            post_times.append(post_duration)
+            total_posts += 1
         
         try:
             with open(gpt_texts_file, 'w', encoding='utf-8') as file:
@@ -550,6 +584,22 @@ def main():
     except Exception as e:
         print(f"Erro durante a execução: {str(e)}")
     finally:
+        total_time = time.time() - start_time
+        avg_post_time = sum(post_times) / len(post_times) if post_times else 0
+        success_rate = (len(successful_posts) / total_posts * 100) if total_posts > 0 else 0
+        
+        print("\n" + "="*50)
+        print("MÉTRICAS DE DESEMPENHO")
+        print("="*50)
+        print(f"Tempo total de execução: {total_time:.2f} segundos")
+        print(f"Tempo médio por post: {avg_post_time:.2f} segundos")
+        print(f"Total de posts processados: {total_posts}")
+        print(f"Posts bem-sucedidos: {len(successful_posts)}")
+        print(f"Posts com falha: {failed_posts}")
+        print(f"Taxa de sucesso: {success_rate:.2f}%")
+        print(f"Posts por minuto: {(total_posts / (total_time / 60)):.2f}" if total_time > 0 else "0.00")
+        print("="*50)
+        
         poster.close()
 
 if __name__ == "__main__":
